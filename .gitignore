@@ -61,3 +61,6 @@ sysinfo.txt
 # Crashlytics generated file
 crashlytics-build.properties
 
+# Added for files that won't be saved
+/[Aa]ssets/Sandbox
+/[Aa]ssets/Sandbox.meta
