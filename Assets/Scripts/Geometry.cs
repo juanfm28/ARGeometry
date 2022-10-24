@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.XR.ARFoundation;
 
@@ -12,11 +13,15 @@ namespace ARGeometry
         public Material appliedMaterial;
 
         MeshRenderer geometryRenderer;
+        MeshFilter geometryFilter;
         Mesh mesh;
+        float texOffset = 0f;
         // Start is called before the first frame update
         void Awake()
         {
             anchors = new List<ARAnchor>();
+            geometryRenderer = GetComponent<MeshRenderer>();
+            geometryFilter = GetComponent<MeshFilter>();
         }
 
         public Vector3 CalculateCentroid()
@@ -40,13 +45,16 @@ namespace ARGeometry
 
             transform.parent = anchors[0].transform;
 
-            GetComponent<MeshFilter>().mesh = mesh = new Mesh();
-            List<Vector3> vertices = new List<Vector3>();
-            List<int> triangles = new List<int>();
+            geometryRenderer.material = appliedMaterial;
+            geometryFilter.mesh = mesh = new();
+            List<Vector3> vertices = new();
+            List<int> triangles = new();
 
             vertices.Add(CalculateCentroid());
             foreach (var anchor in anchors)
                 vertices.Add(anchor.transform.position);
+
+            ARDebugManager.Instance.LogInfo("Vertices: "+vertices.Count);
 
             for (int i = 1; i < vertices.Count; i++)
             {
@@ -55,11 +63,12 @@ namespace ARGeometry
                 triangles.Add(i);
             }
 
+            ARDebugManager.Instance.LogInfo("Triangles: " + (triangles.Count/3));
+
             mesh.vertices = vertices.ToArray();
             mesh.triangles = triangles.ToArray();
             mesh.uv = CalculateUV(vertices).ToArray();
             mesh.RecalculateNormals();
-            geometryRenderer.material = appliedMaterial;
         }
 
         List<Vector2> CalculateUV(List<Vector3> vertices)
@@ -78,8 +87,8 @@ namespace ARGeometry
             }
 
             foreach(var v in vertices)
-                uv.Add(new Vector2(Mathf.InverseLerp(minX,maxX,v.x),Mathf.InverseLerp(minZ,maxZ,v.z)));
-
+                uv.Add(new Vector2(Mathf.InverseLerp(minX,maxX,v.x) + texOffset,Mathf.InverseLerp(minZ,maxZ,v.z)));
+            
             return uv;
         }
 
@@ -90,8 +99,10 @@ namespace ARGeometry
 
         public void PanMaterial(float offset)
         {
-            if(geometryRenderer.material != null)
-                geometryRenderer.material.SetTextureOffset(0, new Vector2(offset,0));
+            texOffset = offset;
+            geometryFilter.mesh.uv = null;
+            geometryFilter.mesh.uv = CalculateUV(geometryFilter.mesh.vertices.ToList<Vector3>()).ToArray();
+            geometryFilter.mesh.RecalculateNormals();
         }
 
         public void RestartGeometry()
@@ -101,6 +112,7 @@ namespace ARGeometry
                 Destroy(anchor);
             }
             anchors.Clear();
+            geometryFilter.mesh = null;
         }
     }
 }

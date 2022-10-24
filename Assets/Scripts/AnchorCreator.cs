@@ -98,7 +98,6 @@ namespace ARGeometry
 
             geometry.anchors.Add(anchor);
             markers.Add(Instantiate(anchorPrefab,anchor.transform));
-            ARDebugManager.Instance.LogInfo("Anchor created. Count: "+geometry.anchors.Count);
             
             if (createLines)
             {
@@ -111,7 +110,6 @@ namespace ARGeometry
                 {
                     try
                     {
-                        ARDebugManager.Instance.LogInfo("Attempting to create line between anchors");
                         //Line is instantiated
                         GameObject newLine = Instantiate(helperLinePrefab, anchor.transform);
                         if (newLine == null)
@@ -125,8 +123,6 @@ namespace ARGeometry
 
                         lineRenderer.SetPosition(0, geometry.anchors[^1].transform.position);
                         lineRenderer.SetPosition(1, geometry.anchors[^2].transform.position);
-                        ARDebugManager.Instance.LogInfo("Line created");
-
                     }catch(Exception e)
                     {
                         ARDebugManager.Instance.LogError(e.Message);
@@ -145,15 +141,13 @@ namespace ARGeometry
                 ARDebugManager.Instance.LogInfo("No anchor to remove");
                 return;
             }
-            //Remove the blue marker
+            //Remove the blue marker and line
             GameObject lastMarker = markers[^1];
             markers.Remove(lastMarker);
             Destroy(lastMarker);
-            ARDebugManager.Instance.LogInfo("Removed blue marker. Count: " + markers.Count);
             GameObject lastLine = lines[^1];
             lines.Remove(lastLine);
             Destroy(lastLine);
-            ARDebugManager.Instance.LogInfo("Removed last line. Count: " + lines.Count);
             //Remove the anchor itself
             geometry.anchors.Remove(lastAnchor);
             Destroy(lastAnchor);
