@@ -5,7 +5,6 @@ using UnityEngine.EventSystems;
 using UnityEngine.XR.ARFoundation;
 using UnityEngine.XR.ARSubsystems;
 using UnityEngine.Events;
-using UnityEngine.Timeline;
 
 namespace ARGeometry
 {
@@ -23,48 +22,55 @@ namespace ARGeometry
 
         public Geometry geometry;
         public UnityEvent OnAnchorCreated;
+
+        [Header("References")]
         ARAnchorManager anchorManager;
         ARRaycastManager raycastManager;
         ARPlaneManager planeManager;
 
+        //Class variables
         Transform pointer;
         ARPlane pointedPlane;
         ARAnchor lastAnchor;
         List<GameObject> lines;
         List<GameObject> markers;
+        static List<ARRaycastHit> s_Hits = new List<ARRaycastHit>();
 
         private void Awake()
         {
+            //Obtain all references needed
             anchorManager = GetComponent<ARAnchorManager>();
             raycastManager = GetComponent<ARRaycastManager>();
             planeManager = GetComponent<ARPlaneManager>();
 
+            //Initialize all variables
             pointer = null;
             pointedPlane = null;
             lines = new List<GameObject>();
             markers = new List<GameObject>();
         }
-
-        // Update is called once per frame
+        //The update main role is placing the pointer that indicates where the vertices are created on a plane
         void Update()
         {
             // If there is no tap, then simply do nothing until the next call to Update().
             if (Input.touchCount == 0)
                 return;
 
+            //To only fire this in the first frame of the touch and not all of them
             var touch = Input.GetTouch(0);
             if (touch.phase != TouchPhase.Began)
                 return;
-
+            
+            //Verifies if the touch was on top of a UI element
             PointerEventData pointerEventData = new PointerEventData(EventSystem.current);
             pointerEventData.position = touch.position;
             List<RaycastResult> raycastResults = new List<RaycastResult>();
 
             EventSystem.current.RaycastAll(pointerEventData, raycastResults);
-
+            //If the touch was over a UI element, it won't continue
             if(raycastResults.Count > 0)
                 return;
-
+            //Place the pointer where the touch intersect a detected planes
             if (raycastManager.Raycast(touch.position, s_Hits, TrackableType.PlaneWithinPolygon))
             {
                 var hitPose = s_Hits[0].pose;
@@ -79,18 +85,20 @@ namespace ARGeometry
 
         public void CreateAnchor()
         {
+            //The anchors can't be created of there is no pointer nor plane touched
             if (pointer == null || pointedPlane == null)
             {
                 ARDebugManager.Instance.LogError("No pointer or no plane to spawn anchor");
                 return;
             }
-
+            //The geometry is limited to 5 vertices, as mentioned in the specification
             if (geometry.anchors.Count >= 5)
             {
                 ARDebugManager.Instance.LogError("Too many anchors");
                 return;
             }
 
+            //The anchor is attached to the selected plane
             var anchor = anchorManager.AttachAnchor(pointedPlane, new Pose(pointer.position, Quaternion.identity));
 
             if (anchor == null)
@@ -99,6 +107,7 @@ namespace ARGeometry
             geometry.anchors.Add(anchor);
             markers.Add(Instantiate(anchorPrefab,anchor.transform));
             
+            //This section creates a line between the vertex placed
             if (createLines)
             {
                 if (geometry.anchors.Count < 2)
@@ -108,34 +117,24 @@ namespace ARGeometry
                 }
                 else
                 {
-                    try
-                    {
-                        //Line is instantiated
+                        //The line is attached to the new anchor placed as child
                         GameObject newLine = Instantiate(helperLinePrefab, anchor.transform);
-                        if (newLine == null)
-                            ARDebugManager.Instance.LogError("Error creating line");
                         lines.Add(newLine);
-                        //Line renderer is obtained
                         LineRenderer lineRenderer = newLine.GetComponent<LineRenderer>();
-                        if (lineRenderer == null)
-                            ARDebugManager.Instance.LogError("Error geting line renderer");
-
-
+                        //The line goes from the last placed anchor to the second to last
                         lineRenderer.SetPosition(0, geometry.anchors[^1].transform.position);
                         lineRenderer.SetPosition(1, geometry.anchors[^2].transform.position);
-                    }catch(Exception e)
-                    {
-                        ARDebugManager.Instance.LogError(e.Message);
-
-                    }
                 }
             }
+            //Reference to the last anchor placed for other processes
             lastAnchor = anchor;
+            //Event for any other procedures needed when a new anchor is created
             OnAnchorCreated.Invoke();
         }
 
         public void RemoveAnchor()
         {
+            //If there are no anchors, nothing gets removed
             if (lastAnchor == null)
             {
                 ARDebugManager.Instance.LogInfo("No anchor to remove");
@@ -153,7 +152,6 @@ namespace ARGeometry
             Destroy(lastAnchor);
             //Reassign the last anchor
             lastAnchor = geometry.anchors.Count > 0 ? geometry.anchors[^1] : null;
-            ARDebugManager.Instance.LogInfo("Removed anchor. Count: "+ geometry.anchors.Count);
         }
 
         public void RemoveAllLines()
@@ -162,23 +160,21 @@ namespace ARGeometry
                 Destroy(line);
            lines.Clear();
         }
-
+        //Removes both lines and vertex markers
         public void RemoveAllMarkers()
         {
             foreach(GameObject marker in markers)
-            {
                 Destroy(marker);
-            }
+            markers.Clear();
             RemoveAllLines();
         }
-
+        //Shows or hides planes as needed
         public void ViewPlanes(bool state)
         {
             foreach(var plane in planeManager.trackables)
                 plane.gameObject.SetActive(state);
         }
 
-        static List<ARRaycastHit> s_Hits = new List<ARRaycastHit>();
     }
 
 }
