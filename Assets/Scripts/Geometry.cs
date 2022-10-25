@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEngine.XR.ARFoundation;
@@ -18,13 +19,14 @@ namespace ARGeometry
 
         [HideInInspector]
         public List<ARAnchor> anchors;
-        
+        bool isUpsideDown;
         void Awake()
         {
             //Get all references and initialize 
             anchors = new List<ARAnchor>();
             geometryRenderer = GetComponent<MeshRenderer>();
             geometryFilter = GetComponent<MeshFilter>();
+            isUpsideDown = false;
         }
 
         public Vector3 CalculateCentroid()
@@ -63,27 +65,42 @@ namespace ARGeometry
                 vertices.Add(anchor.transform.position);
 
             //Triangles are created with the central vertex and two of the external vertices.
-            //In this case the plane is double-sided. This is to account for the possibility that the user places the
-            //points in a different order. Given the size of the solution, the performance impact is negligent,
-            //But a different solution could be produced if needed, such as making sure the normals point in the direction of 
-            //a certain axis, like Vector3.up (for floors) 
             for (int i = 1; i < vertices.Count; i++)
             {
                 //One side
                 triangles.Add(0);
                 triangles.Add(i == vertices.Count - 1 ? 1 : i + 1);
                 triangles.Add(i);
-                /*//Other side. Winded in the opposite direction
-                triangles.Add(0);
-                triangles.Add(i);
-                triangles.Add(i == vertices.Count - 1 ? 1 : i + 1);*/
             }
+            
             //Apply information of the mesh to the filter 
             mesh.vertices = vertices.ToArray();
             mesh.triangles = triangles.ToArray();
             mesh.uv = CalculateUV(vertices).ToArray();  //Initially there is no offset
             mesh.RecalculateNormals();
+            
+            //if the normals of the plains are pointing down, the plane won't be seen.
+            //This means that when the plane is pointing down, the angle between its normals and the Up vector should be 180° (or close)
+            if (Mathf.Abs(Vector3.Angle(mesh.normals[0], transform.up)) >= 120f)
+            {
+                ARDebugManager.Instance.LogInfo("This is upside down");
+                //If the geometry is upside down, redo with the oposite winding to form triangles
+                mesh.triangles = null;
+                triangles.Clear();
+                //Triangles are created with the central vertex and two of the external vertices.
+                for (int i = 1; i < vertices.Count; i++)
+                {
+                    //One side
+                    triangles.Add(0);
+                    triangles.Add(i);
+                    triangles.Add(i == vertices.Count - 1 ? 1 : i + 1);
+                }
+                mesh.triangles = triangles.ToArray();
+                mesh.RecalculateNormals();
+            }
+
             geometryFilter.mesh = mesh;
+            
         }
 
         List<Vector2> CalculateUV(List<Vector3> vertices, float offset = 0)
@@ -103,7 +120,7 @@ namespace ARGeometry
             }
             //Determine where in this frame of reference each vertex is placed and maps this as is uv coordinates
             foreach(var v in vertices)
-                uv.Add(new Vector2(Mathf.InverseLerp(minX,maxX,v.x) + offset,Mathf.InverseLerp(minZ,maxZ,v.z)));
+                uv.Add(new Vector2(Mathf.InverseLerp(minX,maxX,v.x) + (isUpsideDown ? -offset : offset),Mathf.InverseLerp(minZ,maxZ,v.z)));
             
             return uv;
         }
@@ -127,6 +144,8 @@ namespace ARGeometry
             
             anchors.Clear();
             geometryFilter.mesh = null;
+            transform.rotation = Quaternion.identity;
+            isUpsideDown = false;
         }
     }
 }
