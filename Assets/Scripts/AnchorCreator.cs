@@ -31,7 +31,6 @@ namespace ARGeometry
         //Class variables
         Transform pointer;
         ARPlane pointedPlane;
-        ARAnchor lastAnchor;
         List<GameObject> lines;
         List<GameObject> markers;
         static List<ARRaycastHit> s_Hits = new List<ARRaycastHit>();
@@ -126,8 +125,6 @@ namespace ARGeometry
                         lineRenderer.SetPosition(1, geometry.anchors[^2].transform.position);
                 }
             }
-            //Reference to the last anchor placed for other processes
-            lastAnchor = anchor;
             //Event for any other procedures needed when a new anchor is created
             OnAnchorCreated.Invoke();
         }
@@ -135,7 +132,7 @@ namespace ARGeometry
         public void RemoveAnchor()
         {
             //If there are no anchors, nothing gets removed
-            if (lastAnchor == null)
+            if (geometry.anchors.Count == 0)
             {
                 ARDebugManager.Instance.LogInfo("No anchor to remove");
                 return;
@@ -148,10 +145,9 @@ namespace ARGeometry
             lines.Remove(lastLine);
             Destroy(lastLine);
             //Remove the anchor itself
+            ARAnchor lastAnchor = geometry.anchors[^1];
             geometry.anchors.Remove(lastAnchor);
             Destroy(lastAnchor);
-            //Reassign the last anchor
-            lastAnchor = geometry.anchors.Count > 0 ? geometry.anchors[^1] : null;
         }
 
         public void RemoveAllLines()
