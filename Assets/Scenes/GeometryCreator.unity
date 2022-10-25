@@ -1819,7 +1819,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &768154991
 RectTransform:
   m_ObjectHideFlags: 0
@@ -1946,13 +1946,13 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 768154990}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 7b5e36bc44880d6438e2fe013fc1a835, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   debugAreaText: {fileID: 768154992}
-  enableDebug: 1
+  enableDebug: 0
   maxLines: 8
 --- !u!1 &772845847
 GameObject:
